@@ -16,7 +16,13 @@
 
 ## 打开方式
 
-部署到任意静态托管后，用手机浏览器打开，**「添加到主屏」**即成为一个全屏 app（无地址栏）。
+线上地址（GitHub Pages，HTTPS，可装主屏）：
+
+```
+https://zhangmac.github.io/life/
+```
+
+手机浏览器打开 → 分享 → **「添加到主屏幕」**，即成为一个全屏 app（无地址栏、可离线）。
 
 本地也能开：任意静态服务器指向本目录即可（`file://` 不行，IndexedDB 与 Service Worker 需要 http/https）。
 
