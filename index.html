@@ -136,7 +136,14 @@ input, textarea { user-select: text; }
   background: transparent; color: var(--ink-2);
   transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
+.icon-btn { position: relative; }
 .icon-btn:active { transform: scale(0.92); background: var(--hover-2); }
+.icon-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg);
+}
 
 .main { flex: 1; min-height: 0; position: relative; }
 .view {
@@ -323,6 +330,12 @@ input, textarea { user-select: text; }
 .today-sep::after {
   content: ""; flex: 1; height: 1px;
   background: var(--line);
+}
+.today-day {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  padding: 8px 0 2px;
+  font-variant-numeric: tabular-nums;
 }
 
 .tx {
@@ -699,6 +712,7 @@ input, textarea { user-select: text; }
 }
 .row-btn:last-child { border-bottom: 0; }
 .row-btn .hint { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.row-btn .hint.warn { color: var(--accent); font-weight: 600; }
 .row-btn.danger { color: var(--danger); }
 .row-btn:active { opacity: 0.55; }
 
@@ -767,6 +781,7 @@ input, textarea { user-select: text; }
         <circle cx="12" cy="8.5" r="3.6" />
         <path d="M4.8 20c.6-3.9 3.6-6.2 7.2-6.2s6.6 2.3 7.2 6.2" />
       </svg>
+      <span class="icon-dot" id="me-dot" hidden></span>
     </button>
   </header>
 
@@ -1226,16 +1241,17 @@ function renderToday() {
   }
 
   if (earlier.length) {
-    html += `<div class="today-sep">更早</div>` + earlier.map((t) => {
-      const c = catById(t.cat);
-      return `<div class="tx" data-id="${t.id}">
-        <span class="tx-time">${fmtMD(t.at)}</span>
-        <span class="tx-dot" style="background:${c.c}"></span>
-        <span class="tx-cat">${esc(c.name)}</span>
-        <span class="tx-note">${esc(t.note || "")}</span>
-        <span class="tx-amt ${t.dir}">${t.dir === "out" ? "-" : "+"}${fmtMoney(t.amount)}</span>
-      </div>`;
-    }).join("");
+    html += `<div class="today-sep">更早</div>`;
+    let lastKey = "";
+    earlier.forEach((t) => {
+      const k = dayKey(t.at);
+      if (k !== lastKey) {
+        const d = new Date(t.at);
+        html += `<div class="today-day">${d.getMonth() + 1}月${d.getDate()}日 周${WEEK_CN[d.getDay()]}</div>`;
+        lastKey = k;
+      }
+      html += txRow(t);
+    });
   }
 
   box.innerHTML = html;
@@ -1442,6 +1458,11 @@ async function toggleMemo(id) {
 }
 
 /* ---------- 我的 ---------- */
+function needBackup() {
+  const total = ST.txns.length + ST.notes.length;
+  const le = ST.prefs.lastExport;
+  return total > 0 && (!le || Date.now() - le > 14 * 86400000);
+}
 function renderStats() {
   $("#st-txn").textContent = ST.txns.length;
   $("#st-note").textContent = ST.notes.length;
@@ -1453,6 +1474,9 @@ function renderStats() {
     const days = Math.floor((Date.now() - le) / 86400000);
     el.textContent = days === 0 ? "今天" : days === 1 ? "昨天" : `${days} 天前`;
   }
+  const nb = needBackup();
+  el.classList.toggle("warn", nb);
+  $("#me-dot").hidden = !nb;
 }
 function exportBackup() {
   const data = {
@@ -1786,14 +1810,6 @@ async function boot() {
   setMode("txn");
   setView("record");
 
-  /* 备份提醒：超过 14 天没导出 */
-  const le = ST.prefs.lastExport;
-  const total = ST.txns.length + ST.notes.length;
-  if (total > 0 && (!le || Date.now() - le > 14 * 86400000)) {
-    setTimeout(() => {
-      toast(le ? "两周没备份了，去「我的」导出一次" : "还没备份过，去「我的」导出一次");
-    }, 900);
-  }
 }
 
 boot();
