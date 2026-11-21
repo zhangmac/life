@@ -2,7 +2,7 @@
    安装：逐个缓存首屏资源，单个失败不影响其余 —— 弱网下也能装一半用一半。
    取用：静态资源先给缓存、后台静默更新；页面导航优先网络，断网回落到缓存首页。
    改动应用后把 VERSION 加一，旧缓存会被清掉。 */
-const VERSION = "life-v7";
+const VERSION = "life-v8";
 const SHELL = "./index.html";
 const ASSETS = [
   "./",
