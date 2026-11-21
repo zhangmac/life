@@ -375,22 +375,6 @@ body::before {
 /* ---- 滚轮 ---- */
 .wheels { display: flex; align-items: center; min-width: 0; flex: 0 0 auto; }
 
-/* 窗口内壁的两道刻度：数字上下被"切"住的机械感 */
-.amt-win .wheels { position: relative; }
-.amt-win .wheels::before,
-.amt-win .wheels::after {
-  content: "";
-  position: absolute; left: -1px; right: -1px;
-  height: 1.5px;
-  pointer-events: none;
-  background: linear-gradient(90deg,
-    rgba(48, 42, 32, 0) 0%,
-    rgba(48, 42, 32, 0.3) 14%,
-    rgba(48, 42, 32, 0.3) 86%,
-    rgba(48, 42, 32, 0) 100%);
-}
-.amt-win .wheels::before { top: 0; }
-.amt-win .wheels::after { bottom: 0; }
 [data-theme="dark"] .amt-win {
   background: linear-gradient(180deg, #050706 0%, #131615 46%, #050706 100%);
   box-shadow:
@@ -410,14 +394,6 @@ body::before {
     inset 0 0 0 1.5px var(--brand-line),
     inset 0 -1.5px 0 rgba(255, 255, 255, 0.13),
     0 0 0 4px var(--brand-soft);
-}
-[data-theme="dark"] .amt-win .wheels::before,
-[data-theme="dark"] .amt-win .wheels::after {
-  background: linear-gradient(90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.13) 14%,
-    rgba(255, 255, 255, 0.13) 86%,
-    rgba(255, 255, 255, 0) 100%);
 }
 .wheel {
   width: calc(var(--wh, 50px) * 0.52);
