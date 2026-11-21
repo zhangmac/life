@@ -862,13 +862,9 @@ body::before {
 /* 达标率也是一块小表壳 */
 .rate-well {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 52px; min-width: 104px; padding: 0 14px;
+  height: 52px; min-width: 94px; padding: 0 12px;
   border-radius: var(--r-md);
   background: linear-gradient(180deg, var(--well-top), var(--well-bot));
-  box-shadow:
-    inset 0 2px 4px var(--well-in),
-    inset 0 -1px 0 var(--well-ring),
-    0 1px 0 var(--glass-hi);
   --wh: 36px;
   box-shadow:
     inset 0 1.5px 0 rgba(48, 42, 32, 0.16),
@@ -877,9 +873,9 @@ body::before {
     inset 0 -1.5px 0 var(--well-ring),
     0 1px 0 rgba(255, 255, 255, 0.55);
 }
-.rate-well .wheel { width: calc(var(--wh, 36px) * 0.55); }
+.rate-well .wheel { width: calc(var(--wh, 36px) * 0.52); }
 .rate-well .wstrip i { font-size: 29px; font-weight: 640; color: var(--brand); }
-.rate-well .pct { font-size: 15px; font-weight: 650; color: var(--ink-3); margin-left: -2px; }
+.rate-well .pct { font-size: 17px; font-weight: 660; color: var(--ink-3); margin-left: -3px; }
 .rate-cap { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
 .rate-cap b { color: var(--ink-2); font-weight: 620; font-variant-numeric: tabular-nums; }
 .pl-sec { margin-bottom: 18px; }
@@ -2297,11 +2293,14 @@ function bindEvents() {
     toast("删掉了这一条");
   });
 
-  /* 点键盘和表单以外的任何地方，收起键盘（否则误触后没有退路） */
+  /* 点键盘和表单以外的任何地方，收起键盘（否则误触后没有退路）
+     用 composedPath：分类按钮点完会重绘，e.target 已从 DOM 摘下，closest() 会误判成"点在外面" */
   document.addEventListener("click", (e) => {
     if (!padOpen) return;
-    if (e.target.closest("#keypad, #amt-win, .cats, #subs, .row-note, #save-txn, .seg, .tabbar, .hdr, .sheet")) return;
-    closePad();
+    const keep = "#keypad, #amt-win, .cats, #subs, .row-note, #save-txn, .seg, .tabbar, .hdr, .sheet";
+    const path = e.composedPath ? e.composedPath() : [];
+    const inside = path.some((el) => el && el.nodeType === 1 && el.matches && el.matches(keep));
+    if (!inside) closePad();
   });
 
   /* 我的 */

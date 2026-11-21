@@ -2,7 +2,7 @@
    安装：逐个缓存首屏资源，单个失败不影响其余 —— 弱网下也能装一半用一半。
    取用：静态资源先给缓存、后台静默更新；页面导航优先网络，断网回落到缓存首页。
    改动应用后把 VERSION 加一，旧缓存会被清掉。 */
-const VERSION = "life-v3";
+const VERSION = "life-v6";
 const SHELL = "./index.html";
 const ASSETS = [
   "./",
@@ -51,7 +51,12 @@ self.addEventListener("fetch", (e) => {
         if (res && res.ok) {
           const c = await caches.open(VERSION);
           c.put(abs(SHELL), res.clone()).catch(() => {});
+          return res;
         }
+        /* 网关拦了（403/404 之类）：还能用缓存就先顶上，别给用户一张错误页 */
+        const c = await caches.open(VERSION);
+        const hit = (await c.match(abs(SHELL))) || (await c.match(abs("./")));
+        if (hit) return hit;
         return res;
       } catch (_) {
         const c = await caches.open(VERSION);
