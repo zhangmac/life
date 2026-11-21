@@ -18,6 +18,7 @@
    ========================================================= */
 :root {
   --bg: #f4f1ea;
+  --bg-tint: #eae4d6;
   --surface: #fffefb;
   --surface-2: #faf7f1;
   --hover: rgba(32, 32, 29, 0.04);
@@ -45,19 +46,43 @@
 
   --shadow-1: 0 1px 2px rgba(32, 29, 24, 0.05), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   --shadow-2: 0 2px 5px -2px rgba(32, 29, 24, 0.07), 0 18px 38px -22px rgba(32, 29, 24, 0.28);
+  --shadow-3: 0 26px 60px -30px rgba(28, 26, 21, 0.4);
 
-  --r-lg: 16px;
-  --r-md: 12px;
-  --r-sm: 9px;
+  /* 液态玻璃：半透明面 + 背景模糊 + 一道高光边 */
+  --glass: rgba(255, 254, 251, 0.55);
+  --glass-2: rgba(255, 254, 251, 0.34);
+  --glass-brd: rgba(255, 255, 255, 0.66);
+  --glass-hi: rgba(255, 255, 255, 0.85);
+  --glass-blur: saturate(1.85) blur(22px);
+  --glass-blur-lite: saturate(1.5) blur(12px);
+
+  /* 内凹窗口（滚轮计数器的表壳） */
+  --well-top: #ece6d9;
+  --well-bot: #f6f2e9;
+  --well-in: rgba(48, 42, 32, 0.16);
+  --well-ring: rgba(255, 255, 255, 0.7);
+
+  /* 背景光雾 */
+  --mist-1: rgba(202, 134, 54, 0.34);
+  --mist-2: rgba(58, 116, 94, 0.15);
+  --mist-3: rgba(206, 170, 118, 0.40);
+
+  --r-xl: 26px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 10px;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* 滚轮停下来的那一下：带一点过冲，再被窗口边缘吃掉 */
+  --ease-wheel: cubic-bezier(0.2, 1.44, 0.44, 1);
   --dur: 0.16s;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
     "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
 }
 
 [data-theme="dark"] {
-  --bg: #101211;
+  --bg: #0f1110;
+  --bg-tint: #171b19;
   --surface: #191c1a;
   --surface-2: #141614;
   --hover: rgba(255, 255, 255, 0.05);
@@ -85,6 +110,21 @@
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
   --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.35), 0 22px 48px -26px rgba(0, 0, 0, 0.75);
+  --shadow-3: 0 26px 60px -30px rgba(0, 0, 0, 0.85);
+
+  --glass: rgba(30, 34, 32, 0.52);
+  --glass-2: rgba(30, 34, 32, 0.34);
+  --glass-brd: rgba(255, 255, 255, 0.13);
+  --glass-hi: rgba(255, 255, 255, 0.22);
+
+  --well-top: #0a0c0b;
+  --well-bot: #141715;
+  --well-in: rgba(0, 0, 0, 0.62);
+  --well-ring: rgba(255, 255, 255, 0.07);
+
+  --mist-1: rgba(198, 132, 58, 0.17);
+  --mist-2: rgba(84, 152, 122, 0.19);
+  --mist-3: rgba(146, 122, 88, 0.20);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -97,10 +137,33 @@ body {
   overscroll-behavior: none;
   user-select: none;
   touch-action: manipulation;
+  position: relative;
 }
 button, input, textarea { font-family: inherit; }
 button { cursor: pointer; }
 input, textarea { user-select: text; }
+
+/* 底下的光雾：玻璃要有东西可以折射，才不像一块灰板 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -15%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(36% 30% at 14% 4%, var(--mist-1), transparent 66%),
+    radial-gradient(42% 34% at 88% 14%, var(--mist-2), transparent 68%),
+    radial-gradient(56% 40% at 54% 100%, var(--mist-3), transparent 72%),
+    radial-gradient(30% 26% at 2% 70%, var(--mist-2), transparent 70%);
+  animation: mist 34s var(--ease) infinite alternate;
+}
+@keyframes mist {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-2.4%, 1.8%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}
 
 /* ---------------- 骨架 ---------------- */
 .app {
@@ -109,19 +172,42 @@ input, textarea { user-select: text; }
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: transparent;
   position: relative;
+  z-index: 1;
   overflow: hidden;
+}
+
+/* 玻璃面的通用配方 */
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-brd);
+  box-shadow: 0 1px 0 var(--glass-hi) inset, var(--shadow-2);
 }
 
 .hdr {
   flex: 0 0 auto;
-  height: calc(48px + env(safe-area-inset-top));
+  height: calc(50px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
   padding-inline: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-bottom: 1px solid var(--glass-brd);
+  box-shadow: 0 10px 24px -22px rgba(48, 42, 32, 0.55);
+  position: relative;
+  z-index: 12;
+}
+.hdr::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-hi), transparent);
+  opacity: 0.8;
 }
 .hdr-title {
   font-size: 15.5px;
@@ -156,11 +242,25 @@ input, textarea { user-select: text; }
 /* ---------------- 分段控件 ---------------- */
 .seg {
   flex: 0 0 auto;
+  height: 38px;
   margin: 0 20px 8px;
   display: flex; gap: 3px;
   padding: 3px;
   background: var(--ghost-bg);
   border-radius: 12px;
+  overflow: hidden;
+  transition: height 0.32s var(--ease), margin 0.32s var(--ease),
+              padding 0.32s var(--ease), opacity 0.2s var(--ease);
+}
+/* 矮屏上正在输金额时，把"记账/随笔"收起来，高度让给流水 */
+@media (max-height: 720px) {
+  .app.pad-open .seg {
+    height: 0;
+    padding-top: 0; padding-bottom: 0;
+    margin-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 .seg-btn {
   flex: 1; height: 32px;
@@ -182,34 +282,181 @@ input, textarea { user-select: text; }
 
 .amt-top {
   flex: 0 0 auto;
-  height: 26px;
-  display: flex; align-items: center;
-  padding: 0 20px;
-}
-.amt-wrap {
-  flex: 0 0 auto;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 20px 8px;
-  gap: 12px;
+  gap: 10px;
+  padding: 2px 20px 11px;
 }
-.amt-l { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; line-height: 1; }
-.amt-cur { font-size: 19px; color: var(--ink-3); font-weight: 500; }
-.amt {
-  font-size: 38px; font-weight: 620; line-height: 1;
-  letter-spacing: -0.025em;
-  font-variant-numeric: tabular-nums;
-  transition: transform 0.18s var(--ease);
-  white-space: nowrap;
+.amt-wrap { flex: 0 0 auto; padding: 0 20px 11px; }
+
+/* ---- 内凹表壳：机械滚轮计数器的窗口 ---- */
+.amt-win {
+  width: 100%;
+  height: 62px;
+  border: 0;
+  border-radius: 20px;
+  padding: 0 15px 0 13px;
+  display: flex; align-items: center;
+  gap: 0;
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--well-top) 0%, var(--well-bot) 46%, var(--well-top) 100%);
+  box-shadow:
+    /* 上沿的暗边 + 往下压的阴影：凹进去的关键 */
+    inset 0 1.5px 0 rgba(48, 42, 32, 0.18),
+    inset 0 3px 7px var(--well-in),
+    inset 0 18px 22px -14px rgba(48, 42, 32, 0.5),
+    /* 下沿一道亮线：玻璃内壁反光 */
+    inset 0 -1.5px 0 var(--well-ring),
+    inset 0 -8px 12px -10px rgba(255, 255, 255, 0.9),
+    /* 外壳本身浮在背景上 */
+    0 1px 0 rgba(255, 255, 255, 0.6),
+    0 8px 18px -14px rgba(48, 42, 32, 0.5);
+  transition: box-shadow 0.26s var(--ease), transform 0.2s var(--ease);
+  -webkit-appearance: none;
 }
-.amt.is-pop { transform: scale(1.045); }
-.amt.is-empty { color: var(--ink-3); font-weight: 500; }
-.amt.is-long { font-size: 29px; }
-.amt.is-shake { animation: shake 0.32s var(--ease); }
+/* 表壳玻璃上的一道斜高光 */
+.amt-win::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 30%);
+  opacity: 0.5;
+}
+.amt-win.is-live {
+  box-shadow:
+    inset 0 1.5px 0 rgba(48, 42, 32, 0.18),
+    inset 0 3px 7px var(--well-in),
+    inset 0 18px 22px -14px rgba(48, 42, 32, 0.5),
+    inset 0 0 0 1.5px var(--brand-line),
+    inset 0 -1.5px 0 var(--well-ring),
+    0 0 0 4px var(--brand-soft),
+    0 8px 18px -14px rgba(48, 42, 32, 0.5);
+}
+.amt-win.is-shake { animation: shake 0.34s var(--ease); }
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  65% { transform: translateX(4px); }
+  22% { transform: translateX(-6px); }
+  62% { transform: translateX(5px); }
 }
+
+.amt-cur {
+  font-size: 18px; font-weight: 500;
+  color: var(--ink-3);
+  margin-right: 6px;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+/* 窗口右侧：空态提示"点这里"，有金额时显示要记到哪个分类 */
+.amt-cta,
+.amt-tag {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 46%;
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.24s var(--ease);
+}
+.amt-win.is-empty .amt-cta { opacity: 1; }
+.amt-win.is-empty.is-live .amt-cta { opacity: 0; }
+.amt-win:not(.is-empty) .amt-tag { opacity: 1; }
+
+/* ---- 滚轮 ---- */
+.wheels { display: flex; align-items: center; min-width: 0; flex: 0 0 auto; }
+
+/* 窗口内壁的两道刻度：数字上下被"切"住的机械感 */
+.amt-win .wheels { position: relative; }
+.amt-win .wheels::before,
+.amt-win .wheels::after {
+  content: "";
+  position: absolute; left: -1px; right: -1px;
+  height: 1.5px;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(48, 42, 32, 0) 0%,
+    rgba(48, 42, 32, 0.3) 14%,
+    rgba(48, 42, 32, 0.3) 86%,
+    rgba(48, 42, 32, 0) 100%);
+}
+.amt-win .wheels::before { top: 0; }
+.amt-win .wheels::after { bottom: 0; }
+[data-theme="dark"] .amt-win {
+  background: linear-gradient(180deg, #050706 0%, #131615 46%, #050706 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgba(0, 0, 0, 0.9),
+    inset 0 3px 9px rgba(0, 0, 0, 0.85),
+    inset 0 18px 24px -14px rgba(0, 0, 0, 0.9),
+    inset 0 -1.5px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -8px 12px -10px rgba(255, 255, 255, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px -14px rgba(0, 0, 0, 0.9);
+}
+[data-theme="dark"] .amt-win.is-live {
+  box-shadow:
+    inset 0 1.5px 0 rgba(0, 0, 0, 0.9),
+    inset 0 3px 9px rgba(0, 0, 0, 0.85),
+    inset 0 18px 24px -14px rgba(0, 0, 0, 0.9),
+    inset 0 0 0 1.5px var(--brand-line),
+    inset 0 -1.5px 0 rgba(255, 255, 255, 0.13),
+    0 0 0 4px var(--brand-soft);
+}
+[data-theme="dark"] .amt-win .wheels::before,
+[data-theme="dark"] .amt-win .wheels::after {
+  background: linear-gradient(90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.13) 14%,
+    rgba(255, 255, 255, 0.13) 86%,
+    rgba(255, 255, 255, 0) 100%);
+}
+.wheel {
+  width: calc(var(--wh, 50px) * 0.52);
+  height: var(--wh, 50px);
+  overflow: hidden;
+  flex: 0 0 auto;
+  position: relative;
+}
+.wstrip {
+  display: block;
+  will-change: transform;
+  transform: translate3d(0, calc(var(--y, 10) * -1 * var(--wh, 50px)), 0);
+  transition: transform var(--t, 0.3s) var(--d, 0s) var(--ease-wheel);
+}
+.wstrip i {
+  height: var(--wh, 50px);
+  display: grid; place-items: center;
+  font-size: 42px; font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  font-style: normal;
+  color: var(--ink);
+  transition: color 0.3s var(--ease);
+}
+.wheels.dec .wheel { width: calc(var(--wh, 50px) * 0.42); }
+.wheels.dec .wstrip i { font-size: 26px; font-weight: 600; color: var(--ink-2); }
+.wheels.dec { margin-left: 2px; }
+.w-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  text-align: center;
+  font-size: 26px; font-weight: 700;
+  color: var(--ink-2);
+  line-height: 1;
+  transform: translateY(1px);
+}
+.amt-win.is-empty .wstrip i { color: var(--ink-3); font-weight: 520; }
+.amt-win.is-empty .w-dot { color: var(--ink-3); opacity: 0.65; }
 
 .dir { display: flex; gap: 2px; padding: 2px; background: var(--ghost-bg); border-radius: 10px; flex: 0 0 auto; }.dir-btn {
   height: 26px; padding: 0 11px;
@@ -239,29 +486,85 @@ input, textarea { user-select: text; }
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  gap: 7px;
   padding: 0 20px;
 }
 .cat {
-  height: 44px;
-  border: 1px solid var(--line);
+  height: 46px;
+  border: 1px solid var(--glass-brd);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
+  align-items: center; justify-content: center; gap: 4px;
   font-size: 11px; font-weight: 550; color: var(--ink-2);
-  transition: all var(--dur) var(--ease);
+  box-shadow: 0 1px 0 var(--glass-hi) inset, 0 2px 6px -4px rgba(32, 29, 24, 0.18);
+  transition: transform 0.18s var(--ease), background 0.18s var(--ease),
+              border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
   position: relative;
 }
-.cat .sw { width: 7px; height: 7px; border-radius: 50%; background: var(--c); opacity: 0.62; transition: all var(--dur) var(--ease); }
+.cat .sw {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--c); opacity: 0.62;
+  transition: all 0.18s var(--ease);
+}
 .cat.is-on {
-  border-color: var(--c);
+  border-color: color-mix(in srgb, var(--c) 52%, transparent);
   background: var(--cs);
   color: var(--ink);
   font-weight: 650;
+  transform: translateY(-1.5px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72) inset,
+    0 7px 16px -9px var(--c);
 }
-.cat.is-on .sw { opacity: 1; box-shadow: 0 0 0 3px var(--cs); }
+.cat.is-on .sw { opacity: 1; box-shadow: 0 0 0 3.5px var(--cs); }
 .cat:active { transform: scale(0.955); }
+
+/* ---- 二级分类：横滑一行 ---- */
+.subs {
+  flex: 0 0 auto;
+  display: flex; gap: 6px;
+  padding: 10px 20px 1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+}
+.subs::-webkit-scrollbar { display: none; }
+.subs.is-empty { padding-top: 0; height: 0; overflow: hidden; }
+.sub {
+  flex: 0 0 auto;
+  height: 30px; padding: 0 13px;
+  border: 1px solid var(--line-2);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  color: var(--ink-2);
+  font-size: 12px; font-weight: 550;
+  white-space: nowrap;
+  transition: transform 0.16s var(--ease), background 0.18s var(--ease),
+              color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.sub.is-on {
+  background: var(--accent-soft);
+  color: #9d6320;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  font-weight: 640;
+  box-shadow: 0 3px 10px -6px rgba(196, 133, 63, 0.65), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+[data-theme="dark"] .sub.is-on { color: var(--accent); }
+[data-theme="dark"] .rate-well,
+[data-theme="dark"] .stat-cell {
+  background: linear-gradient(180deg, #050706, #131615);
+  box-shadow:
+    inset 0 1.5px 0 rgba(0, 0, 0, 0.9),
+    inset 0 3px 7px rgba(0, 0, 0, 0.8),
+    inset 0 -1.5px 0 rgba(255, 255, 255, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.sub:active { transform: scale(0.95); }
 
 .row-note {
   flex: 0 0 auto;
@@ -355,6 +658,7 @@ input, textarea { user-select: text; }
 .tx-amt.in { color: var(--brand); }
 .tx-trk { font-size: 9px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 3px; line-height: 13px; flex: 0 0 auto; }
 
+.app.pad-open #today .empty { display: none; }
 .empty {
   padding: 26px 4px;
   text-align: center;
@@ -364,32 +668,49 @@ input, textarea { user-select: text; }
 }
 .empty b { display: block; color: var(--ink-2); font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
 
-/* ---------------- 数字键盘 ---------------- */
+/* ---------------- 数字键盘（按需从底部升起，不常驻） ---------------- */
 .keypad {
+  --kh: 50px;
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 7px;
-  padding: 8px 16px 8px;
-  background: var(--surface-2);
-  border-top: 1px solid var(--line);
+  height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+  opacity: 0;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid transparent;
+  transition: height 0.36s var(--ease), padding 0.36s var(--ease),
+              opacity 0.22s var(--ease), border-color 0.22s var(--ease);
+}
+.keypad.is-open {
+  height: calc(var(--kh) * 4 + 21px + 16px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  opacity: 1;
+  border-top-color: var(--glass-brd);
 }
 .keypad[hidden] { display: none; }
-.kb-open .keypad { display: none; }
 .key {
-  height: clamp(46px, 6.4vh, 56px);
-  border: 0;
+  height: var(--kh);
+  border: 1px solid var(--glass-brd);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
   color: var(--ink);
-  font-size: 20px; font-weight: 500;
+  font-size: 21px; font-weight: 500;
   font-variant-numeric: tabular-nums;
-  box-shadow: var(--shadow-1);
+  box-shadow: 0 1px 0 var(--glass-hi) inset, 0 2px 5px -3px rgba(32, 29, 24, 0.24);
   transition: transform 0.09s var(--ease), background 0.09s var(--ease);
   display: grid; place-items: center;
+  -webkit-appearance: none;
 }
 .key:active { transform: scale(0.955); background: var(--hover-2); }
 .key.del { font-size: 14px; color: var(--ink-2); }
+@media (max-height: 720px) {
+  .keypad { --kh: 44px; }
+}
 
 /* ---------------- 随笔 ---------------- */
 .note-editor { flex: 0 0 auto; padding: 0 20px 8px; }
@@ -534,11 +855,33 @@ input, textarea { user-select: text; }
 .plan-h h2 { margin: 0; font-size: 13.5px; font-weight: 650; }
 .plan-h .sub { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .rate-box {
-  display: flex; align-items: baseline; gap: 6px;
-  margin: 2px 0 14px;
+  display: flex; align-items: center; gap: 9px;
+  margin: 2px 0 16px;
   font-size: 11.5px; color: var(--ink-3);
 }
-.rate-box b { font-size: 26px; font-weight: 620; color: var(--brand); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* 达标率也是一块小表壳 */
+.rate-well {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 52px; min-width: 104px; padding: 0 14px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, var(--well-top), var(--well-bot));
+  box-shadow:
+    inset 0 2px 4px var(--well-in),
+    inset 0 -1px 0 var(--well-ring),
+    0 1px 0 var(--glass-hi);
+  --wh: 36px;
+  box-shadow:
+    inset 0 1.5px 0 rgba(48, 42, 32, 0.16),
+    inset 0 3px 6px var(--well-in),
+    inset 0 14px 16px -14px rgba(48, 42, 32, 0.34),
+    inset 0 -1.5px 0 var(--well-ring),
+    0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.rate-well .wheel { width: calc(var(--wh, 36px) * 0.55); }
+.rate-well .wstrip i { font-size: 29px; font-weight: 640; color: var(--brand); }
+.rate-well .pct { font-size: 15px; font-weight: 650; color: var(--ink-3); margin-left: -2px; }
+.rate-cap { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+.rate-cap b { color: var(--ink-2); font-weight: 620; font-variant-numeric: tabular-nums; }
 .pl-sec { margin-bottom: 18px; }
 .pl-sec-h {
   font-size: 11.5px; font-weight: 650; color: var(--ink-3);
@@ -571,9 +914,11 @@ input, textarea { user-select: text; }
 .add-bar {
   flex: 0 0 auto;
   display: flex; gap: 8px;
-  padding: 9px 20px;
-  background: var(--surface-2);
-  border-top: 1px solid var(--line);
+  padding: 9px 20px calc(9px + env(safe-area-inset-bottom));
+  background: var(--glass-2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-top: 1px solid var(--glass-brd);
 }
 .add-bar input {
   flex: 1; min-width: 0; height: 38px;
@@ -630,15 +975,20 @@ input, textarea { user-select: text; }
 .mm-text { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.6; word-break: break-word; }
 .mm-item.done .mm-text { color: var(--ink-3); text-decoration: line-through; }
 
-/* ---------------- 底部 tab ---------------- */
+/* ---------------- 底部 tab（玻璃条） ---------------- */
 .tabbar {
   flex: 0 0 auto;
-  height: calc(52px + env(safe-area-inset-bottom));
+  height: calc(54px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: var(--surface);
-  border-top: 1px solid var(--line);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-brd);
+  box-shadow: 0 -1px 0 var(--glass-hi) inset, 0 -12px 26px -20px rgba(48, 42, 32, 0.5);
+  position: relative;
+  z-index: 12;
 }
 .tab {
   border: 0; background: transparent;
@@ -646,17 +996,31 @@ input, textarea { user-select: text; }
   align-items: center; justify-content: center; gap: 3px;
   color: var(--ink-3);
   font-size: 10px; font-weight: 550;
-  transition: color var(--dur) var(--ease);
+  position: relative;
+  transition: color 0.2s var(--ease);
 }
-.tab svg { width: 20px; height: 20px; stroke-width: 1.7; }
+.tab svg { width: 20px; height: 20px; stroke-width: 1.7; transition: transform 0.24s var(--ease); }
 .tab.is-on { color: var(--ink); }
-.tab.is-on svg { stroke-width: 2.1; }
+.tab.is-on svg { stroke-width: 2.1; transform: translateY(-1px); }
 .tab:active { opacity: 0.6; }
+.tab.is-on::before {
+  content: "";
+  position: absolute; top: 0; left: 50%;
+  width: 26px; height: 2.5px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  opacity: 0.85;
+}
 
 /* ---------------- 我的 ---------------- */
 .sheet {
   position: fixed; inset: 0; z-index: 40;
-  background: var(--bg);
+  background:
+    radial-gradient(64% 42% at 82% -4%, var(--mist-1), transparent 70%),
+    radial-gradient(52% 40% at -2% 82%, var(--mist-2), transparent 72%),
+    radial-gradient(60% 36% at 50% 104%, var(--mist-3), transparent 74%),
+    var(--bg);
   display: flex; flex-direction: column;
   transform: translateY(100%);
   transition: transform 0.3s var(--ease);
@@ -669,6 +1033,7 @@ input, textarea { user-select: text; }
   padding-top: env(safe-area-inset-top);
   padding-inline: 14px;
   display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px solid var(--line);
 }
 .sheet-hdr h2 { font-size: 16px; margin: 0; font-weight: 650; }
 .sheet-body {
@@ -682,18 +1047,20 @@ input, textarea { user-select: text; }
   gap: 8px; margin: 6px 0 20px;
 }
 .stat-cell {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--well-top), var(--well-bot));
+  border: 1px solid var(--glass-brd);
   border-radius: var(--r-md);
-  padding: 12px 10px;
-  text-align: center;
+  padding: 10px 4px 9px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  box-shadow:
+    inset 0 1.5px 0 rgba(48, 42, 32, 0.14),
+    inset 0 3px 6px var(--well-in),
+    inset 0 -1.5px 0 var(--well-ring),
+    0 1px 0 rgba(255, 255, 255, 0.5);
 }
-.stat-cell b {
-  display: block;
-  font-size: 21px; font-weight: 620;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
+.stat-cell .wheels { --wh: 28px; }
+.stat-cell .wheel { width: calc(var(--wh, 28px) * 0.54); }
+.stat-cell .wstrip i { font-size: 22px; font-weight: 640; }
 .stat-cell span { font-size: 10.5px; color: var(--ink-3); }
 .me-sec { margin-bottom: 20px; }
 .me-sec h3 {
@@ -764,10 +1131,12 @@ input, textarea { user-select: text; }
   flex: 0 0 auto;
 }
 
-@media (max-height: 700px) {
-  .amt { font-size: 32px; }
-  .cat { height: 40px; }
-  .key { height: 43px; }
+@media (max-height: 720px) {
+  .amt-win { height: 58px; }
+  .amt-win .wheels { --wh: 40px; }
+  .wstrip i { font-size: 32px; }
+  .wheels.dec .wstrip i { font-size: 21px; }
+  .cat { height: 42px; }
   .note-editor #note-text { min-height: 64px; }
 }
 </style>
@@ -799,16 +1168,22 @@ input, textarea { user-select: text; }
             <button class="dir-btn is-on" data-dir="out">支出</button>
             <button class="dir-btn" data-dir="in">收入</button>
           </div>
-        </div>
-        <div class="amt-wrap">
-          <div class="amt-l">
-            <span class="amt-cur">¥</span>
-            <span class="amt is-empty" id="amt">0</span>
-          </div>
           <button class="save-btn" id="save-txn">记下来</button>
         </div>
 
+        <div class="amt-wrap">
+          <button class="amt-win is-empty" id="amt-win" type="button" aria-label="输入金额">
+            <span class="amt-cur">¥</span>
+            <span class="wheels" id="amt-int"></span>
+            <span class="w-dot" id="amt-dot">.</span>
+            <span class="wheels dec" id="amt-dec"></span>
+            <span class="amt-tag" id="amt-tag"></span>
+            <span class="amt-cta">点这里</span>
+          </button>
+        </div>
+
         <div class="cats" id="cats"></div>
+        <div class="subs is-empty" id="subs"></div>
 
         <div class="row-note">
           <input id="txn-note" type="text" placeholder="备注（可选）" maxlength="40" enterkeyhint="done" autocomplete="off" />
@@ -904,9 +1279,9 @@ input, textarea { user-select: text; }
   </div>
   <div class="sheet-body">
     <div class="stat-row">
-      <div class="stat-cell"><b id="st-txn">0</b><span>笔流水</span></div>
-      <div class="stat-cell"><b id="st-note">0</b><span>条随笔</span></div>
-      <div class="stat-cell"><b id="st-plan">0</b><span>项计划</span></div>
+      <div class="stat-cell"><span class="wheels" id="st-txn"></span><span>笔流水</span></div>
+      <div class="stat-cell"><span class="wheels" id="st-note"></span><span>条随笔</span></div>
+      <div class="stat-cell"><span class="wheels" id="st-plan"></span><span>项计划</span></div>
     </div>
 
     <div class="me-sec">
@@ -938,7 +1313,7 @@ input, textarea { user-select: text; }
       </p>
     </div>
 
-    <div class="me-ver">生活 v0.1 · M1</div>
+    <div class="me-ver">生活 v0.2</div>
   </div>
 </div>
 
@@ -986,18 +1361,23 @@ function weekRangeLabel(d) {
   return `${s.getMonth() + 1}/${s.getDate()} – ${e.getMonth() + 1}/${e.getDate()}`;
 }
 
-/* ---------- 分类 ---------- */
+/* ---------- 分类（两级） ---------- */
 const CATS = [
-  { id: "food",    name: "餐饮", c: "#c4853f" },
-  { id: "traffic", name: "交通", c: "#5b7fa6" },
-  { id: "shop",    name: "购物", c: "#8f6ba8" },
-  { id: "home",    name: "居住", c: "#6b8f71" },
-  { id: "fun",     name: "娱乐", c: "#c26b6b" },
-  { id: "health",  name: "医教", c: "#4f8f8a" },
-  { id: "social",  name: "人情", c: "#b07a4a" },
-  { id: "other",   name: "其他", c: "#8b8478" }
+  { id: "food",    name: "餐饮", c: "#c4853f", subs: ["早餐", "午餐", "晚餐", "咖啡", "外卖", "零食", "买菜"] },
+  { id: "traffic", name: "交通", c: "#5b7fa6", subs: ["地铁", "公交", "打车", "加油", "停车", "高铁"] },
+  { id: "shop",    name: "购物", c: "#8f6ba8", subs: ["日用", "服饰", "数码", "美妆", "家居"] },
+  { id: "home",    name: "居住", c: "#6b8f71", subs: ["房租", "水电", "燃气", "物业", "维修"] },
+  { id: "fun",     name: "娱乐", c: "#c26b6b", subs: ["电影", "游戏", "运动", "旅行", "演出"] },
+  { id: "health",  name: "医教", c: "#4f8f8a", subs: ["药品", "门诊", "体检", "书籍", "课程"] },
+  { id: "social",  name: "人情", c: "#b07a4a", subs: ["红包", "请客", "礼物", "孝亲"] },
+  { id: "other",   name: "其他", c: "#8b8478", subs: ["其他"] }
 ];
 const catById = (id) => CATS.find((c) => c.id === id) || CATS[CATS.length - 1];
+/** 一级 + 二级的完整叫法 */
+const catLabel = (t) => {
+  const c = catById(t.cat);
+  return t.sub ? `${c.name} · ${t.sub}` : c.name;
+};
 
 /* ---------- 状态 ---------- */
 const ST = {
@@ -1009,6 +1389,8 @@ const ST = {
   mode: "txn",
   dir: "out",
   cat: "food",
+  sub: "午餐",
+  subOf: {},
   draft: "",
   inTrack: false,
   big: false,
@@ -1109,25 +1491,165 @@ function saveMeta() {
 function renderCats() {
   $("#cats").innerHTML = CATS.map((c) => `
     <button class="cat ${c.id === ST.cat ? "is-on" : ""}" data-cat="${c.id}"
-            style="--c:${c.c};--cs:${hexToRgba(c.c, 0.11)}">
+            style="--c:${c.c};--cs:${hexToRgba(c.c, 0.13)}">
       <span class="sw"></span><span>${c.name}</span>
     </button>`).join("");
+  renderSubs();
+}
+function renderSubs() {
+  const box = $("#subs");
+  const cat = catById(ST.cat);
+  const subs = cat.subs || [];
+  if (!subs.length) { box.className = "subs is-empty"; box.innerHTML = ""; return; }
+  box.className = "subs";
+  box.innerHTML = subs.map((s) => `
+    <button class="sub ${s === ST.sub ? "is-on" : ""}" data-sub="${esc(s)}">${esc(s)}</button>`).join("");
+}
+function pickCat(id) {
+  ST.cat = id;
+  const cat = catById(id);
+  ST.sub = ST.subOf[id] || (cat.subs && cat.subs[0]) || "";
+  renderCats();
+  renderAmtTag();
+  const box = $("#subs");
+  if (box) box.scrollLeft = 0;          // 别停在上一类的末尾
+}
+function pickSub(s) {
+  ST.sub = s;
+  ST.subOf[ST.cat] = s;
+  renderSubs();
+  renderAmtTag();
+  const on = $("#subs .sub.is-on");
+  if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
 }
 
-/* ---------- 记录：金额 ---------- */
-function groupDigits(v) {
-  if (v === "") return "0";
-  const dot = v.indexOf(".");
-  const intPart = dot < 0 ? v : v.slice(0, dot);
-  const rest = dot < 0 ? "" : v.slice(dot);
-  return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + rest;
+/* =========================================================
+   机械滚轮计数器
+   strip 里放 0-9 三遍：正反各滚一圈都撞不到边界。
+   每一位是独立的一只轮子，低位先动、也停得快。
+   ========================================================= */
+const WCELLS = 30;
+function makeWheel() {
+  const el = document.createElement("span");
+  el.className = "wheel";
+  const strip = document.createElement("span");
+  strip.className = "wstrip";
+  let h = "";
+  for (let i = 0; i < WCELLS; i++) h += "<i>" + (i % 10) + "</i>";
+  strip.innerHTML = h;
+  strip.style.setProperty("--y", 10);
+  el.appendChild(strip);
+  el._pos = 10;
+  return el;
 }
-function renderAmount() {
-  const el = $("#amt");
+/**
+ * @param idx 从右数第几位（0 = 最末位）。越靠右越快，模拟进位
+ */
+function setWheel(el, d, dir, idx) {
+  const strip = el.firstChild;
+  let pos = el._pos;
+  if (pos < 10 || pos > 19) {            /* 静默拉回中圈：三圈重复，看不出变化 */
+    pos = pos < 10 ? pos + 10 : pos - 10;
+    el._pos = pos;
+    strip.style.transition = "none";
+    strip.style.setProperty("--y", pos);
+    void strip.offsetHeight;
+    strip.style.transition = "";
+  }
+  const cur = pos % 10;
+  if (cur === d) return;
+  const delta = dir >= 0 ? (d - cur + 10) % 10 : -((cur - d + 10) % 10);
+  const next = pos + delta;
+  el._pos = next;
+  const t = 190 + idx * 44 + Math.min(Math.abs(delta), 6) * 12;
+  strip.style.setProperty("--t", t + "ms");
+  strip.style.setProperty("--d", idx * 16 + "ms");
+  strip.style.setProperty("--y", next);
+
+  clearTimeout(el._reset);
+  if (next > 19 || next < 10) {
+    el._reset = setTimeout(() => {
+      const p = el._pos;
+      const back = p > 19 ? p - 10 : p + 10;
+      el._pos = back;
+      strip.style.transition = "none";
+      strip.style.setProperty("--y", back);
+      void strip.offsetHeight;
+      strip.style.transition = "";
+    }, t + idx * 16 + 60);
+  }
+}
+/** 让一组轮子显示 str（左侧可增位），offset = 右侧还有几位 */
+function setWheelGroup(box, arr, str, dir, offset) {
+  /* 位数变多：往左补新轮子 */
+  while (arr.length < str.length) {
+    const w = makeWheel();
+    box.insertBefore(w, box.firstChild);
+    arr.unshift(w);
+  }
+  /* 位数变少：多出来的高位置 0，等滚停后由 shrinkWheels 收走 */
+  const extra = arr.length - str.length;
+  for (let i = 0; i < extra; i++) {
+    setWheel(arr[i], 0, dir, arr.length - 1 - i + offset);
+  }
+  const n = arr.length;
+  const base = n - str.length;          // 有效位从 arr[base] 开始
+  for (let i = 0; i < str.length; i++) {
+    setWheel(arr[base + i], +str[i], dir, n - 1 - (base + i) + offset);
+  }
+}
+function shrinkWheels(arr, want) {
+  while (arr.length > want) {
+    const w = arr.shift();
+    if (w && w.remove) w.remove();
+  }
+}
+
+/* ---------- 记录：金额（滚轮） ---------- */
+let amtInt = [], amtDec = [], lastAmt = 0, shrinkTimer = null;
+
+function amountParts(v) {
+  const di = v.indexOf(".");
+  let ip = di < 0 ? v : v.slice(0, di);
+  let dp = di < 0 ? "" : v.slice(di + 1);
+  ip = (ip || "0").replace(/^0+(?=\d)/, "") || "0";   // 去前导零，但留一个 0
+  dp = (dp + "00").slice(0, 2);
+  return [ip, dp];
+}
+function initAmount() {
+  const ib = $("#amt-int"), db = $("#amt-dec");
+  ib.innerHTML = ""; db.innerHTML = "";
+  amtInt = [makeWheel()]; ib.appendChild(amtInt[0]);
+  amtDec = [makeWheel(), makeWheel()];
+  amtDec.forEach((w) => db.appendChild(w));
+  renderAmount(true);
+}
+function renderAmtTag() {
+  const el = $("#amt-tag");
+  if (el) el.textContent = catLabel({ cat: ST.cat, sub: ST.sub });
+}
+function renderAmount(silent) {
   const v = ST.draft;
-  el.textContent = groupDigits(v);
-  el.classList.toggle("is-empty", v === "");
-  el.classList.toggle("is-long", v.replace(".", "").length > 6);
+  const [ip, dp] = amountParts(v);
+  const now = parseFloat(v || "0") || 0;
+  const dir = silent ? 1 : (now >= lastAmt ? 1 : -1);
+  lastAmt = now;
+
+  setWheelGroup($("#amt-int"), amtInt, ip, dir, 2);
+  setWheel(amtDec[0], +dp[0], dir, 1);
+  setWheel(amtDec[1], +dp[1], dir, 0);
+
+  $("#amt-win").classList.toggle("is-empty", v === "");
+  renderAmtTag();
+
+  /* 位数变少：等轮子滚完再收，别把正在转的那一位抽掉 */
+  clearTimeout(shrinkTimer);
+  if (amtInt.length > ip.length) {
+    shrinkTimer = setTimeout(() => {
+      const need = amountParts(ST.draft)[0].length;
+      if (amtInt.length > need) shrinkWheels(amtInt, need);
+    }, 360);
+  }
 }
 function keyPress(k) {
   if (k === "del") {
@@ -1160,11 +1682,29 @@ function buildKeypad() {
   });
 }
 
+/* ---------- 记录：键盘（按需唤出） ---------- */
+let padOpen = false;
+function openPad() {
+  if (padOpen) return;
+  padOpen = true;
+  $("#keypad").classList.add("is-open");
+  $("#amt-win").classList.add("is-live");
+  $("#app").classList.add("pad-open");
+  buzz(8);
+}
+function closePad() {
+  if (!padOpen) return;
+  padOpen = false;
+  $("#keypad").classList.remove("is-open");
+  $("#amt-win").classList.remove("is-live");
+  $("#app").classList.remove("pad-open");
+}
+
 /* ---------- 记录：保存流水 ---------- */
 async function saveTxn() {
   const amount = Math.round(parseFloat(ST.draft || "0") * 100) / 100;
   if (!(amount > 0)) {
-    const el = $("#amt");
+    const el = $("#amt-win");
     el.classList.remove("is-shake");
     void el.offsetWidth;
     el.classList.add("is-shake");
@@ -1177,6 +1717,7 @@ async function saveTxn() {
     amount,
     dir: ST.dir,
     cat: ST.cat,
+    sub: ST.sub || "",
     note: $("#txn-note").value.trim(),
     inTrack: ST.inTrack,
     origin: "manual",
@@ -1194,10 +1735,8 @@ async function saveTxn() {
   ST.inTrack = false;
   $("#t-track").setAttribute("aria-pressed", "false");
   renderAmount();
+  closePad();
   if (navigator.vibrate) buzz(10);
-  const el = $("#amt");
-  el.classList.add("is-pop");
-  setTimeout(() => el.classList.remove("is-pop"), 180);
   renderToday();
   renderTrack();
   renderStats();
@@ -1209,7 +1748,7 @@ function txRow(t) {
   return `<div class="tx" data-id="${t.id}">
       <span class="tx-time">${fmtHM(t.at)}</span>
       <span class="tx-dot" style="background:${c.c}"></span>
-      <span class="tx-cat">${esc(c.name)}</span>
+      <span class="tx-cat">${esc(catLabel(t))}</span>
       <span class="tx-note">${esc(t.note || "")}</span>
       ${t.inTrack ? `<span class="tx-trk">轨迹</span>` : ""}
       <span class="tx-amt ${t.dir}">${t.dir === "out" ? "-" : "+"}${fmtMoney(t.amount)}</span>
@@ -1224,7 +1763,7 @@ function renderToday() {
   const earlier = all.filter((t) => dayKey(t.at) !== today).slice(0, 8);
 
   if (!todays.length && !earlier.length) {
-    box.innerHTML = `<div class="empty"><b>今天还没记</b>上面输金额，选个分类，点「记下来」</div>`;
+    box.innerHTML = `<div class="empty"><b>今天还没记</b>输个金额，选好分类，点「记下来」</div>`;
     return;
   }
 
@@ -1340,8 +1879,8 @@ function renderTrack() {
       const c = catById(t.cat);
       inner += `<div class="mile mile-tx">
         <span style="width:6px;height:6px;border-radius:50%;background:${c.c};flex:0 0 auto"></span>
-        <span>${esc(c.name)}${t.note ? " · " + esc(t.note) : ""}</span>
-        <span class="mt-amt">-${fmtMoney(t.amount)}</span>
+        <span>${esc(catLabel(t))}${t.note ? " · " + esc(t.note) : ""}</span>
+        <span class="mt-amt">${t.dir === "out" ? "-" : "+"}${fmtMoney(t.amount)}</span>
       </div>`;
     });
     if (d.n) {
@@ -1383,8 +1922,10 @@ function renderPlan() {
       <span class="sub">${weekRangeLabel()}</span>
     </div>
     <div class="rate-box">
-      <b>${must.length ? rate : "–"}${must.length ? "%" : ""}</b>
-      <span>${must.length ? `必做 ${doneMust}/${must.length}` : "还没有必做事项"}</span>
+      <span class="rate-well"${must.length ? "" : " hidden"}>
+        <span class="wheels" id="rate-wheels"></span><span class="pct">%</span>
+      </span>
+      <span class="rate-cap">${must.length ? `必做 <b>${doneMust}/${must.length}</b>` : "还没有必做事项"}</span>
     </div>
 
     <div class="pl-sec">
@@ -1397,6 +1938,8 @@ function renderPlan() {
       ${stretch.length ? stretch.map(row).join("") : `<div class="pl-empty">想做但不强求，不计入达标率</div>`}
     </div>
   `;
+  if (must.length) setWheelGroup($("#rate-wheels"), rateArr, String(rate), 1, 0);
+  else rateArr.length = 0;
 }
 async function addPlan() {
   const input = $("#plan-input");
@@ -1463,10 +2006,24 @@ function needBackup() {
   const le = ST.prefs.lastExport;
   return total > 0 && (!le || Date.now() - le > 14 * 86400000);
 }
+const statWheels = { txn: [], note: [], plan: [] };
+let rateArr = [];
+
+function paintStat(key, n) {
+  const s = String(n);
+  const arr = statWheels[key];
+  setWheelGroup($("#st-" + key), arr, s, 1, 0);
+  if (arr.length > s.length) {
+    const extra = arr.length - s.length;
+    for (let i = 0; i < extra; i++) setWheel(arr[i], 0, -1, arr.length - 1 - i);
+    clearTimeout(arr._shrink);
+    arr._shrink = setTimeout(() => shrinkWheels(arr, s.length), 320);
+  }
+}
 function renderStats() {
-  $("#st-txn").textContent = ST.txns.length;
-  $("#st-note").textContent = ST.notes.length;
-  $("#st-plan").textContent = ST.plans.length;
+  paintStat("txn", ST.txns.length);
+  paintStat("note", ST.notes.length);
+  paintStat("plan", ST.plans.length);
   const le = ST.prefs.lastExport;
   const el = $("#last-export");
   if (!le) el.textContent = "从未导出";
@@ -1545,6 +2102,7 @@ function setView(v) {
   $$(".view").forEach((el) => el.classList.toggle("is-active", el.id === "v-" + v));
   $$(".tab").forEach((b) => b.classList.toggle("is-on", b.dataset.view === v));
   $("#hdr-title").textContent = v === "record" ? dateTitle() : TITLES[v];
+  if (v !== "record") closePad();
   buzz(6);
 }
 function setMode(m) {
@@ -1555,7 +2113,7 @@ function setMode(m) {
   $("#pane-txn").hidden = m !== "txn";
   $("#pane-note").hidden = m !== "note";
   $("#keypad").hidden = m !== "txn";
-  if (m === "note") { $("#note-text").focus(); }
+  if (m === "note") { closePad(); $("#note-text").focus(); }
   else { document.documentElement.classList.remove("kb-open"); }
 }
 
@@ -1616,10 +2174,18 @@ function bindEvents() {
   $("#cats").addEventListener("click", (e) => {
     const b = e.target.closest(".cat");
     if (!b) return;
-    ST.cat = b.dataset.cat;
-    renderCats();
+    pickCat(b.dataset.cat);
     buzz(6);
   });
+  $("#subs").addEventListener("click", (e) => {
+    const b = e.target.closest(".sub");
+    if (!b) return;
+    pickSub(b.dataset.sub);
+    buzz(6);
+  });
+
+  /* 点表壳才唤出键盘 —— 不点就一直是干净的 */
+  $("#amt-win").addEventListener("click", () => openPad());
 
   /* 轨迹开关 */
   $("#t-track").addEventListener("click", () => {
@@ -1635,7 +2201,10 @@ function bindEvents() {
 
   /* 备注聚焦时让位给系统键盘 */
   const noteInput = $("#txn-note");
-  noteInput.addEventListener("focus", () => document.documentElement.classList.add("kb-open"));
+  noteInput.addEventListener("focus", () => {
+    closePad();
+    document.documentElement.classList.add("kb-open");
+  });
   noteInput.addEventListener("blur", () => {
     if (window.visualViewport && window.innerHeight - window.visualViewport.height <= 130)
       document.documentElement.classList.remove("kb-open");
@@ -1728,6 +2297,13 @@ function bindEvents() {
     toast("删掉了这一条");
   });
 
+  /* 点键盘和表单以外的任何地方，收起键盘（否则误触后没有退路） */
+  document.addEventListener("click", (e) => {
+    if (!padOpen) return;
+    if (e.target.closest("#keypad, #amt-win, .cats, #subs, .row-note, #save-txn, .seg, .tabbar, .hdr, .sheet")) return;
+    closePad();
+  });
+
   /* 我的 */
   $("#open-me").addEventListener("click", () => {
     $("#sheet-me").classList.add("is-open");
@@ -1801,9 +2377,11 @@ async function boot() {
   const p = meta.find((x) => x.k === "prefs");
   if (p && p.v) Object.assign(ST.prefs, p.v);
   ST.cat = ST.prefs.lastCat || "food";
+  ST.sub = (catById(ST.cat).subs || [""])[0];
 
   applyTheme();
   buildKeypad();
+  initAmount();
   bindEvents();
   fixViewport();
   renderAll();
