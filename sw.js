@@ -2,7 +2,7 @@
    安装只等"首屏"这一件事：先把 index.html 落地再接管，不让几张图标拖住离线能力。
    图标和 manifest 由 fetch 层按需补进缓存 —— 用得到才下，下不到也不影响打开。
    改动应用后把 VERSION 加一，旧缓存会被清掉。 */
-const VERSION = "life-v9";
+const VERSION = "life-v10";
 const SHELL = "./index.html";
 const CORE = ["./index.html", "./manifest.json"];
 
