@@ -1,7 +1,7 @@
 {
   "name": "生活 · 记录",
   "short_name": "生活",
-  "description": "记账、随笔、计划、备忘录，收拢成一条可回看的轨迹。",
+  "description": "记账、统计、随笔、计划、备忘录，收拢成一条可回看的轨迹。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
