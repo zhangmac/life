@@ -166,6 +166,12 @@ body::before {
 }
 
 /* ---------------- 骨架 ---------------- */
+/* 浏览器内：底部工具栏是浮层，不改变视口尺寸，只能给 tabbar 让出一条
+   装成应用（standalone）后 --browser-pad 归零，不影响 */
+:root { --browser-pad: 0px; }
+html[data-mode="browser"][data-bpad="on"] { --browser-pad: 60px; }
+@media (min-width: 561px) { html[data-bpad="on"] { --browser-pad: 0px; } }
+
 .app {
   height: var(--vh, 100dvh);
   max-width: 560px;
@@ -1618,10 +1624,9 @@ body::before {
    ========================================================= */
 .tabbar {
   flex: 0 0 auto;
-  height: calc(54px + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  height: calc(54px + env(safe-area-inset-bottom) + var(--browser-pad, 0px));
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--browser-pad, 0px));
+  display: flex;
   background: var(--glass);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
@@ -1632,6 +1637,7 @@ body::before {
 }
 .tab {
   border: 0; background: transparent;
+  flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px;
   color: var(--ink-3);
@@ -2157,6 +2163,8 @@ body::before {
         <button class="theme-opt" data-theme="light">浅色</button>
         <button class="theme-opt" data-theme="dark">深色</button>
       </div>
+      <button class="theme-opt" id="bpad-btn" style="width:100%">浏览器内底部留白</button>
+      <p class="me-note" style="padding-top:7px">在浏览器里打开时，给底部工具栏让出一条，导航不会被盖住。装成应用后自动失效。</p>
     </div>
 
     <div class="me-sec">
@@ -2168,7 +2176,7 @@ body::before {
       </p>
     </div>
 
-    <div class="me-ver">生活 v0.10</div>
+    <div class="me-ver">生活 v0.11</div>
   </div>
 </div>
 
@@ -4692,6 +4700,13 @@ function bindEvents() {
     $("#store-bar").hidden = true;
     document.documentElement.style.setProperty("--bar-h", "0px");
   });
+  const bp = $("#bpad-btn");
+  if (bp) bp.addEventListener("click", () => {
+    ST.prefs.browserPad = ST.prefs.browserPad === false;
+    applyBpad();
+    saveMeta();
+    buzz(6);
+  });
   $("#theme-row").addEventListener("click", (e) => {
     const b = e.target.closest(".theme-opt");
     if (!b) return;
@@ -4702,17 +4717,46 @@ function bindEvents() {
   });
 }
 
-/* ---------- 视口高度（iOS 键盘弹出时压缩布局） ---------- */
+/* ---------- 视口高度 ---------- */
+/* 键盘弹出 / 地址栏伸缩 / 从后台回来，都要重算，否则底部 tab 会被顶出屏幕 */
 function fixViewport() {
   const vv = window.visualViewport;
-  if (!vv) return;
   const set = () => {
-    document.documentElement.style.setProperty("--vh", vv.height + "px");
+    const h = vv ? vv.height : window.innerHeight;
+    document.documentElement.style.setProperty("--vh", Math.round(h) + "px");
   };
   set();
-  vv.addEventListener("resize", set);
-  vv.addEventListener("scroll", set);
-  window.addEventListener("orientationchange", () => setTimeout(set, 220));
+  requestAnimationFrame(set);
+  if (vv) {
+    vv.addEventListener("resize", set);
+    vv.addEventListener("scroll", set, { passive: true });
+  }
+  window.addEventListener("resize", set);
+  window.addEventListener("orientationchange", () => setTimeout(set, 240));
+  window.addEventListener("pageshow", set);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) setTimeout(set, 60);
+  });
+}
+
+/* 浏览器内 vs 装成应用：底部工具栏是浮层，占位与否只能靠这个开关区分 */
+function applyDisplayMode() {
+  const mq = window.matchMedia ? window.matchMedia("(display-mode: standalone)") : null;
+  const standalone = (mq && mq.matches) || window.navigator.standalone === true;
+  document.documentElement.dataset.mode = standalone ? "app" : "browser";
+  applyBpad();
+  if (mq && mq.addEventListener) mq.addEventListener("change", applyDisplayMode);
+}
+
+/* 底部留白开关：真机上留白多了或少了，用户自己就能关/开 */
+function applyBpad() {
+  const on = ST.prefs.browserPad !== false;
+  document.documentElement.dataset.bpad = on ? "on" : "off";
+  const b = $("#bpad-btn");
+  if (b) {
+    b.classList.toggle("is-on", on);
+    b.textContent = on ? "浏览器内底部留白 · 开" : "浏览器内底部留白 · 关";
+  }
 }
 
 /* ---------- 启动 ---------- */
@@ -4774,6 +4818,7 @@ async function boot() {
   buildPad();
   initAmount();
   bindEvents();
+  applyDisplayMode();
   fixViewport();
   renderAll();
   setPlanPane("plan");
